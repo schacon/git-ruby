@@ -1,0 +1,10 @@
+5e53019b3238362144c2766f02a2c00d91fcc023	refs/heads/git_grep
+5e392652a881999392c2757cf9b783c5d47b67f7	refs/heads/master
+1cc8667014381e2788a94777532a788307f38d26	refs/heads/test
+3a9f195756f5bd26b67c5e1fffd92d68d61be14e	refs/heads/test_branches
+3a9f195756f5bd26b67c5e1fffd92d68d61be14e	refs/heads/test_object
+935badc874edd62a8629aaf103418092c73f0a56	refs/tags/gitsearch1
+546bec6f8872efa41d5d97a369f669165ecda0de	refs/tags/v2.5
+3a9f195756f5bd26b67c5e1fffd92d68d61be14e	refs/tags/v2.6
+3a9f195756f5bd26b67c5e1fffd92d68d61be14e	refs/tags/v2.7
+5e53019b3238362144c2766f02a2c00d91fcc023	refs/tags/v2.8

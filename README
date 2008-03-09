@@ -1,0 +1,43 @@
+== Git Library for Ruby
+
+A pure ruby implementation of Git
+
+= Homepage
+
+The Git-Ruby homepage is currently at : 
+
+http://jointheconversation.org/gitruby
+
+Git public hosting of the project source code is at:
+
+http://github.com/schacon/gitruby
+
+= Roadmap
+
+Many of the simple read-only operations have already been
+moved to pure ruby.
+
+= Gitr
+
+I have included a command line pure-ruby git client called 'gitr'
+
+The following commands are available - they all will run in pure ruby, without forking out the the git binary.
+In fact, they can be run on a machine without git compiled on it.
+
+commands: log
+          log-shas
+          cat-file (treeish)
+          rev-parse (treeish)
+          branches
+          ls-tree (tree)
+          
+
+= Examples
+
+Here are a bunch of examples of how to use the Git-Ruby package. 
+
+First you have to remember to require rubygems if it's not.  Then include the 'git-ruby' gem.
+
+   require 'rubygems'
+   require 'git-ruby'
+
