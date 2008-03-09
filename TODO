@@ -1,29 +1,57 @@
-* more documentation
+$repo.log.first.gtree.children.map
+$repo.log
+$repo.log.path(@name)
+$repo.branches
 
+$repo.init
+$repo.clone
+
+$repo.add
+$repo.remove
+$repo.commit(message)
+$repo.archive('HEAD', nil, :format => 'tgz', :prefix => 'wiki/')
+$repo.checkout(params[:branch])
+
+$repo.merge(params[:branch])
+$repo.diff
+$repo.diff(previous_commit, rev).path(@name).patch
+ 
+$repo.branch(params[:branch]) (delete, create, checkout)
+
+TRANSPORTS 
+  - ssh (push, pull)
+  - http (pull)
+  - git (push, pull)
+  
+$repo.add_remote(params[:branch_name], params[:branch_url])
+$repo.push
+$repo.fetch
+
+$repo.with_temp_index 
+$repo.read_tree 
+$repo.write_tree  
+$repo.checkout_index  
+ 
+
+
+* Git::Object methods
+  - tree recursion
+  - commit information
+
+* pushing
+
+* more documentation
 
 * git revert, stash, rebase
 
 * diff additions
   - annotate, blame
 
-
 * submodule support
 
 * repository admin
-  - prune, fsck, pack-refs, gc, count-objects, unpack-objects
-
-* email/patch integration
-  - request-pull(email_address), git-am, git-apply
-  
-  
-* compatible with git 1.4
+  - prune, fsck, pack-refs, gc, count-objects, unpack-objects  
 
 * More Error Examples
 
 * More Git::Status methods
-
-
-* Speed up through pure ruby
-
-* Speed up through C bindings to libgit-thin
-
