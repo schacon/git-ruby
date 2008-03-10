@@ -60,6 +60,29 @@ module GitRuby
           return RawObject.new(type, content)
         end
 
+        # currently, I'm using the legacy format because it's easier to do
+        # this function takes content and a type and writes out the loose object and returns a sha
+        def put_raw_object(content, type)
+          size = content.length.to_s
+          if !%w(blob tree commit tag).include?(type) || size !~ /^\d+$/
+            raise LooseObjectError, "invalid object header"
+          end
+          
+          header = "#{type} #{size}\0"
+          store = header + content
+                    
+          sha1 = Digest::SHA1.hexdigest(store)
+          path = @directory+'/'+sha1[0...2]+'/'+sha1[2..40]
+          
+          content = Zlib::Deflate.deflate(store)
+          
+          FileUtils.mkdir_p(@directory+'/'+sha1[0...2])
+          File.open(path, 'w') do |f|
+            f.puts content
+          end
+          return sha1
+        end
+
         # private
         def unpack_object_header_gently(buf)
           used = 0

@@ -32,7 +32,7 @@ class TestRawInternals < Test::Unit::TestCase
     c = g.object("v2.5").gtree
     sha = c.sha
     
-    repo = Git::Raw::Repository.new(@wbare)
+    repo = GitRuby::Raw::Repository.new(@wbare)
     assert_equal('ex_dir', repo.object(sha).entry.first.name)
   end
   
@@ -40,7 +40,7 @@ class TestRawInternals < Test::Unit::TestCase
     c = g.object("v2.5")
     sha = c.sha
     
-    repo = Git::Raw::Repository.new(g.repo.path)
+    repo = GitRuby::Raw::Repository.new(g.repo.path)
     raw_out = repo.log(sha)
     
     assert_equal('commit 546bec6f8872efa41d5d97a369f669165ecda0de', raw_out.split("\n").first)

@@ -37,12 +37,13 @@ module GitRuby
         self.contents.split("\n")
       end
       
-      def setup
-        raise NotImplementedError
-      end
-      
       def to_s
         @objectish
+      end
+
+=begin
+      def setup
+        raise NotImplementedError
       end
       
       def grep(string, path_limiter = nil, opts = {})
@@ -54,15 +55,18 @@ module GitRuby
       def diff(objectish)
         GitRuby::Diff.new(@base, @objectish, objectish)
       end
+
+      # creates an archive of this object (tree)
+      def archive(file = nil, opts = {})
+        @base.lib.archive(@objectish, file, opts)
+      end
+
+=end
       
       def log(count = 30)
         GitRuby::Log.new(@base, count).object(@objectish)
       end
       
-      # creates an archive of this object (tree)
-      def archive(file = nil, opts = {})
-        @base.lib.archive(@objectish, file, opts)
-      end
       
       def tree?
         @type == 'tree'

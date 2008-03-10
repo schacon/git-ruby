@@ -20,7 +20,7 @@ module GitRuby
     def initialize(str)
       m = /^(.*?) <(.*)> (\d+) ([+-])0*(\d+?)$/.match(str)
       if !m
-        raise RuntimeError, "invalid %s header in commit" % key
+        raise RuntimeError, "invalid %s header in commit" % str
       end
       @name = m[1]
       @email = m[2]

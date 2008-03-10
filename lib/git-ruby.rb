@@ -58,5 +58,14 @@ module GitRuby
   def self.open(working_dir, options = {})
     Base.open(working_dir, options)
   end
+  
+  # initialize a new git repository, defaults to the current working directory
+  #
+  # options
+  #   :repository => '/path/to/alt_git_dir'
+  #   :index => '/path/to/alt_index_file'
+  def self.init(working_dir = '.', options = {})
+    Base.init(working_dir, options)
+  end
     
 end

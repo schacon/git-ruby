@@ -1,9 +1,15 @@
+== first pass ==
+
+repo.add(@name)
+repo.commit(message)
+
+== second pass ==
+
 $repo.log.first.gtree.children.map
 $repo.log
 $repo.log.path(@name)
 $repo.branches
 
-$repo.init
 $repo.clone
 
 $repo.add
@@ -17,6 +23,8 @@ $repo.diff
 $repo.diff(previous_commit, rev).path(@name).patch
  
 $repo.branch(params[:branch]) (delete, create, checkout)
+
+$repo.grep - (Rak)
 
 TRANSPORTS 
   - ssh (push, pull)

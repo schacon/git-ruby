@@ -1,7 +1,7 @@
 require 'test/unit'
 require 'fileutils'
 require 'logger'
-require File.dirname(__FILE__) + '/../lib/git'
+require File.dirname(__FILE__) + '/../lib/git-ruby'
 
 class Test::Unit::TestCase
   
@@ -14,11 +14,13 @@ class Test::Unit::TestCase
     elsif File.directory?(File.join(cwd, 'tests', 'files'))
       @test_dir = File.join(cwd, 'tests', 'files')
     end
-    
+
+    @wdir_dot = File.expand_path(File.join(@test_dir, 'working'))    
     @wbare = File.expand_path(File.join(@test_dir, 'working.git'))
     @index = File.expand_path(File.join(@test_dir, 'index'))
     
     @wdir = create_temp_repo(@wdir_dot)
+    @git = GitRuby.open(@wdir)
   end
   
   def teardown
@@ -28,7 +30,6 @@ class Test::Unit::TestCase
     end
   end
   
-  
   def with_temp_bare
     in_temp_dir do |path|
       g = Git.clone(@wbare, 'new')
@@ -37,6 +38,7 @@ class Test::Unit::TestCase
       end
     end
   end
+
   
   def create_temp_repo(clone_path)
     filename = 'git_test' + Time.now.to_i.to_s + rand(300).to_s.rjust(3, '0')

@@ -8,7 +8,7 @@ module GitRuby
   class Lib
       
     @git_dir = nil
-    @git_index_file = nil
+    @git_index = nil
     @git_work_dir = nil
     @path = nil
     
@@ -18,11 +18,11 @@ module GitRuby
     def initialize(base = nil, logger = nil)
       if base.is_a?(GitRuby::Base)
         @git_dir = base.repo.path
-        @git_index_file = base.index.path if base.index
         @git_work_dir = base.dir.path if base.dir
+        @git_index = base.index if base.index
       elsif base.is_a?(Hash)
         @git_dir = base[:repository]
-        @git_index_file = base[:index] 
+        @git_index = base[:index] 
         @git_work_dir = base[:working_directory]
       end
       if logger
@@ -101,7 +101,8 @@ module GitRuby
       head = File.join(@git_dir, 'refs', 'tags', string)
       return File.read(head).chomp if File.file?(head)
       
-      ## more
+      ## !! more !!
+      
       return string
     end
     
@@ -116,8 +117,72 @@ module GitRuby
       process_commit_data(cdata, sha)
     end
     
+    # !! how do I handle symlinks and other weird files?
+    def add(file)
+      # add file to object db
+      return false if !File.exists?(file)
+      return false if !File.file?(file)
+            
+      sha = get_raw_repo.put_raw_object(File.read(file), 'blob')
+      
+      # add it to the index
+      @git_index.add(file, sha)
+    end
+    
+    def write_tree_contents(tree_contents)
+      get_raw_repo.put_raw_object(tree_contents, 'tree')
+    end
+    
+    # tree 48bbf0db7e813affab7d8dd2842b8455ff9876be
+    # parent 935badc874edd62a8629aaf103418092c73f0a56
+    # author scott Chacon <schacon@agadorsparticus.(none)> 1194720731 -0800
+    # committer scott Chacon <schacon@agadorsparticus.(none)> 1194720731 -0800
+    # \n
+    # message
+    def write_commit_info(tree, parents, message)
+      contents = []
+      contents << ['tree', tree].join(' ')
+      parents.each do |p|
+        contents << ['parent', p].join(' ')
+      end
+
+      name = config_get('user.name')
+      email = config_get('user.email')
+      puts author_string = "#{name} <#{email}> #{Time.now.to_i} #{formatted_offset}"
+      contents << ['author', author_string].join(' ')
+      contents << ['committer', author_string].join(' ')
+      contents << ''
+      contents << message
+      
+      get_raw_repo.put_raw_object(contents.join("\n"), 'commit')      
+    end
+    
+    # File vendor/rails/activesupport/lib/active_support/values/time_zone.rb, line 27
+    def formatted_offset
+      utc_offset = Time.now.utc_offset
+      
+      return "" if utc_offset == 0
+      sign = (utc_offset < 0 ? -1 : 1)
+      hours = utc_offset.abs / 3600
+      minutes = (utc_offset.abs % 3600) / 60
+      "%+03d%s%02d" % [ hours * sign, '', minutes ]
+    end
+    private :formatted_offset
+    
+    def update_ref(ref, sha)
+      ref_file = File.join(@git_dir, ref)
+      return false if !File.exists?(ref_file)
+      
+      File.open(ref_file, 'w') do |f|
+        f.puts sha
+      end
+    end
+    
+    def commit(message)
+      @git_index.commit(message)
+    end
+    
     def object_contents(sha)
-      #command('cat-file', ['-p', sha])
       get_raw_repo.cat_file(revparse(sha)).chomp
     end
 
@@ -168,7 +233,6 @@ module GitRuby
     def config_get(name)
       c = config_list
       c[name]
-      #command('config', ['--get', name])
     end
     
     def config_list

@@ -25,6 +25,31 @@ module GitRuby
       
       self.new(git_options)
     end
+    
+    # initializes a git repository
+    #
+    # options:
+    #  :repository
+    #  :index_file
+    #
+    def self.init(working_dir, opts = {})
+      default = {:working_directory => working_dir,
+                 :repository => File.join(working_dir, '.git')}
+      git_options = default.merge(opts)
+      
+      if git_options[:working_directory]
+        # if !working_dir, make it
+        FileUtils.mkdir_p(git_options[:working_directory]) if !File.directory?(git_options[:working_directory])
+      end
+
+      if git_options[:working_directory]
+        git_options[:repository] = File.join(working_dir, '.git') if !git_options[:repository]
+      end
+      
+      GitRuby::Repository.init(git_options[:repository])
+      
+      self.new(git_options)
+    end      
         
     def initialize(options = {})
       if working_dir = options[:working_directory]
@@ -38,7 +63,8 @@ module GitRuby
       
       @working_directory = GitRuby::WorkingDirectory.new(options[:working_directory]) if options[:working_directory]
       @repository = GitRuby::Repository.new(options[:repository]) if options[:repository]
-      @index = GitRuby::Index.new(options[:index], false) if options[:index]
+      @index = GitRuby::Index.new(self, options[:index], false) if options[:index]
+      @lib = nil
     end
   
     # returns a reference to the working directory
@@ -67,7 +93,7 @@ module GitRuby
 
     def set_index(index_file, check = true)
       @lib = nil
-      @index = GitRuby::Index.new(index_file.to_s, check)
+      @index = GitRuby::Index.new(self, index_file.to_s, check)
     end
     
     # changes current working directory for a block
@@ -121,6 +147,7 @@ module GitRuby
       GitRuby::Object.new(self, objectish, 'blob')
     end
 
+
     # returns a Git::Log object with count commits
     def log(count = 30)
       GitRuby::Log.new(self, count)
@@ -150,7 +177,8 @@ module GitRuby
     def tags
       self.lib.tags.map { |r| tag(r) }
     end
-    
+
+=begin    
     # returns a Git::Tag object
     def tag(tag_name)
       GitRuby::Object.new(self, tag_name, 'tag', true)
@@ -160,6 +188,7 @@ module GitRuby
     def archive(treeish, file = nil, opts = {})
       self.object(treeish).archive(file, opts)
     end    
+=end
                 
     def with_working(work_dir)
       return_value = false
@@ -193,6 +222,18 @@ module GitRuby
     
     def ls_tree(objectish)
       self.lib.ls_tree(objectish)
+    end
+
+    def ls_files
+      self.index.ls_files
+    end
+    
+    def add(file)
+      self.lib.add(file)
+    end
+    
+    def commit(message)
+      self.lib.commit(message)
     end
     
     def cat_file(objectish)

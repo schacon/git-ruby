@@ -71,7 +71,11 @@ module GitRuby
         return nil if !r
         Object.from_raw(r, self)
       end
-
+      
+      def put_raw_object(content, type)
+        @loose.put_raw_object(content, type)
+      end
+      
       def get_raw_object_by_sha1(sha1)
         sha1 = [sha1].pack("H*")
 

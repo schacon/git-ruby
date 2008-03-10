@@ -1,0 +1,13 @@
+[user]
+        name = Scott Chacon
+        email = schacon@gmail.com
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[gui]
+	geometry = 986x682+365+124 211 500
+[remote "working"]
+	url = ../working.git
+	fetch = +refs/heads/*:refs/remotes/working/*
