@@ -12,14 +12,23 @@ module GitRuby
     # for the simple stuff i need to do, pretending we have an index file should be fine
     def initialize(base, path, check_path = false)
       # read in the current HEAD
+      if File.extname(path) != '.gitr'
+        path += '.gitr'
+      end
+      
       @base = base
       @path = path
-      @files = {}
       
-      read_head
+      if(File.exists?(@path))
+        @files, @ref, @last_commit = File.open(@path) { |f| Marshal.load(f) }
+      else
+        FileUtils.mkdir_p(File.dirname(path))
+        read_head
+      end
     end
     
     def read_head
+      @files = {}
       FileUtils.cd(@base.repo.path) do
         ref = File.read('HEAD')
         if m = ref.match(/ref: (.*)/)
@@ -41,6 +50,7 @@ module GitRuby
       # find the tree sha and read the tree
       commit = @base.gcommit(commit_sha)
       read_tree_object(commit.gtree)
+      save_index
     end
     
     # read the tree into the index
@@ -90,6 +100,7 @@ module GitRuby
                         :sha_working => sha, :sha_index => sha, 
                         :mode_working => mode, :mode_index => mode}
       end
+      save_index
     end
     
     def commit(message)
@@ -118,11 +129,13 @@ module GitRuby
           if trees[f[:path]]
             f[:sha_index] = trees[f[:path]]
           end
-          str = [[f[:mode_index], f[:type], f[:sha_index]].join(' '), f[:file]].join("\t")
+          sha = [f[:sha_index]].pack("H*")
+          str = "%s %s\0%s" % [f[:mode_index], f[:file], [f[:sha_index]].pack("H*")]
+          
           tree_contents << [f[:file], str]
         end
         
-        tree_content = tree_contents.sort.map { |h| h[1] }.join("\n")
+        tree_content = tree_contents.sort.map { |h| h[1] }.join('')
         trees[mod_tree] = @base.lib.write_tree_contents(tree_content)
       end
       
@@ -133,11 +146,16 @@ module GitRuby
       new_sha = @base.lib.write_commit_info(head_tree, [@last_commit], message)
 
       # update HEAD ref
-      @base.lib.update_ref(ref, new_sha)
+      @base.lib.update_ref(@ref, new_sha)
+      read_head
     end
         
     def ls_files
       @files
+    end
+    
+    def save_index
+      File.open(@path, 'w') { |f| Marshal.dump([@files, @ref, @last_commit], f) }
     end
     
   end

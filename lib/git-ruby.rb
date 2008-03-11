@@ -22,6 +22,7 @@ require 'git-ruby/object'
 require 'git-ruby/author'
 
 require 'git-ruby/raw/repository'
+require 'fileutils'
 
 
 # Git-Ruby Library

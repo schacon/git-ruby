@@ -11,7 +11,7 @@ module GitRuby
     
     # opens a bare Git Repository - no working directory options
     def self.bare(git_dir, opts = {})
-      default = {:repository => git_dir}
+      default = {:repository => File.expand_path(git_dir)}
       git_options = default.merge(opts)
       
       self.new(git_options)
@@ -20,7 +20,7 @@ module GitRuby
     # opens a new Git Project from a working directory
     # you can specify non-standard git_dir and index file in the options
     def self.open(working_dir, opts={})    
-      default = {:working_directory => working_dir}
+      default = {:working_directory => File.expand_path(working_dir)}
       git_options = default.merge(opts)
       
       self.new(git_options)
@@ -33,7 +33,7 @@ module GitRuby
     #  :index_file
     #
     def self.init(working_dir, opts = {})
-      default = {:working_directory => working_dir,
+      default = {:working_directory => File.expand_path(working_dir),
                  :repository => File.join(working_dir, '.git')}
       git_options = default.merge(opts)
       

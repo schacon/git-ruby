@@ -57,7 +57,7 @@ module GitRuby
           c = GitRuby::Raw::Object.from_raw(o)
           
           output += "commit #{sha}\n"
-          output += o.content + "\n"
+          output += o.content + "\n\n"
 
           sha = c.parent.first
           i += 1

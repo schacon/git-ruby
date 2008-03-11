@@ -187,6 +187,10 @@ module GitRuby
       #@entry.sort { |a,b| a.name <=> b.name }.
       @entry.collect { |e| [[e.format_mode, e.format_type, e.sha1].join(' '), e.name].join("\t") }.join("\n")
     end
+    
+    def actual_raw
+      #@entry.collect { |e| e.raw.join(' '), e.name].join("\t") }.join("\n")
+    end
   end
 
   class Commit < Object

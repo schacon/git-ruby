@@ -44,7 +44,7 @@ module GitRuby
       
     def self.add_file(name, contents)
       File.open(name, 'w') do |f|
-        f.puts contents
+        f.write contents
       end
     end
     

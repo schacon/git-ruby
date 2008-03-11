@@ -148,7 +148,7 @@ module GitRuby
 
       name = config_get('user.name')
       email = config_get('user.email')
-      puts author_string = "#{name} <#{email}> #{Time.now.to_i} #{formatted_offset}"
+      author_string = "#{name} <#{email}> #{Time.now.to_i} #{formatted_offset}"
       contents << ['author', author_string].join(' ')
       contents << ['committer', author_string].join(' ')
       contents << ''
@@ -174,7 +174,7 @@ module GitRuby
       return false if !File.exists?(ref_file)
       
       File.open(ref_file, 'w') do |f|
-        f.puts sha
+        f.write sha
       end
     end
     
@@ -204,7 +204,7 @@ module GitRuby
         current = m[1]
       end
       arr += list_files('heads').map { |f| [f, f == current] }
-      arr += list_files('remotes').map { |f| [f, false] }
+      arr += list_files('remotes').map { |f| [f, false] } rescue nil
             
       arr
     end
