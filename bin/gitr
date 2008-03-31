@@ -12,11 +12,8 @@
 #   add --log-file 
 #   add --help
 
-
-#require 'rubygems'
-#require 'git-ruby'
-
-require File.dirname(__FILE__) + '/../lib/git-ruby'
+require 'rubygems'
+require 'git-ruby'
 require 'logger'
 
 command = ARGV[0]
@@ -25,7 +22,11 @@ if !command
   puts 'You have to provide a command'
   puts 'usage: gitr (command) [args]'
   puts
-  puts 'commands: log'
+  puts 'commands: init'
+  puts '          add'
+  puts '          commit'
+  puts '          ls-files'
+  puts '          log'
   puts '          log-shas'
   puts '          cat-file (treeish)'
   puts '          rev-parse (treeish)'
@@ -39,7 +40,9 @@ git_dir = ENV['GIT_DIR'] || '.git'
 working_dir = ENV['GIT_WORKING_DIR'] || '.'
 #@git = Git.bare(git_dir, :log => Logger.new(STDOUT))
 
-@git = GitRuby.open(working_dir)
+if command != 'init'
+  @git = GitRuby.open(working_dir)
+end
 
 def short_sha(sha)
   if sha
@@ -50,6 +53,8 @@ def short_sha(sha)
 end
 
 case command
+when 'init'
+  GitRuby.init
 when 'ls-files'
   puts ['mode', 'repo    ', 'index   ', 'working ', 'path'].join("\t")
   @git.ls_files.sort.each do |f, hsh|

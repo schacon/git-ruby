@@ -101,12 +101,13 @@ module GitRuby
                         :mode_working => mode, :mode_index => mode}
       end
       save_index
+      sha
     end
     
     def commit(message)
       # find all the modified files
       dirs = {}
-      mods = []
+      mods = {}
       
       @files.each do |path, file_hsh|
         tree = File.dirname(path)
@@ -115,22 +116,29 @@ module GitRuby
 
         if file_hsh[:type] == 'blob'
           if (file_hsh[:sha_index] != file_hsh[:sha_repo]) || (file_hsh[:mode_index] != file_hsh[:mode_repo])
-            mods << [tree.split('/').size, tree]
+            mods[tree] = tree.split('/').size
+            
+            # go down the tree, adding all the subtrees
+            levels = tree.split('/')
+            while(new_tree = levels.pop) do
+              mods[levels.join('/')] = levels.size if (levels.size > 0)
+            end
+              
           end
         end
       end
-       
+      
       trees = {}
-           
+                
       # write new trees
-      mods.sort.reverse.each do |depth, mod_tree|        
+      mods.sort.reverse.each do |mod_tree, depth|
         tree_contents = []
         dirs[mod_tree].each do |f|
           if trees[f[:path]]
             f[:sha_index] = trees[f[:path]]
           end
           sha = [f[:sha_index]].pack("H*")
-          str = "%s %s\0%s" % [f[:mode_index], f[:file], [f[:sha_index]].pack("H*")]
+          str = "%s %s\0%s" % [f[:mode_index], f[:file], sha]
           
           tree_contents << [f[:file], str]
         end
