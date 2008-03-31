@@ -58,18 +58,12 @@ module GitRuby
       
       remote_name = opts[:remote] || 'origin'
       
-      # look at #{repository} for http://, user@, git://
-      if repository =~ /^http:\/\//
-        # http fetch
-        clone_http(repository, false, remote_name, clone_dir)
-      elsif repository =~ /^https:\/\//
-        # https fetch
-        clone_http(repository, true, remote_name, clone_dir)
-      elsif repository =~ /^git:\/\//
-        # git fetch
-        raise GitRubyInvalidTransport('transport git:// not yet supported') 
-      else
-        raise GitRubyInvalidTransport('unknown transport') 
+      if branch = fetch(repository, remote_name)
+        # create a local branch 
+        update_ref("refs/heads/#{branch}", revparse("#{remote_name}/#{branch}"))
+        if !opts[:bare]
+          # checkout branch
+        end
       end
             
       if opts[:bare]
@@ -80,13 +74,31 @@ module GitRuby
       end
     end
     
+    def fetch(repository, remote_name)
+      # look at #{repository} for http://, user@, git://
+      if repository =~ /^http:\/\//
+        # http fetch
+        return fetch_over_http(repository, false, remote_name)
+      elsif repository =~ /^https:\/\//
+        # https fetch
+        return fetch_over_http(repository, true, remote_name)
+      elsif repository =~ /^git:\/\//
+        # git fetch
+        raise GitRubyInvalidTransport('transport git:// not yet supported') 
+      else
+        raise GitRubyInvalidTransport('unknown transport - can only do http/s right now') 
+      end
+    end
+    
     # implements cloning a repository over http/s
     # meant to be called 
-    def clone_http(repo_url, use_ssl, remote_name, clone_dir)
+    def fetch_over_http(repo_url, use_ssl, remote_name)
       # refs : 909e4d4f706c11cafbe35fd9729dc6cce24d6d6f        refs/heads/master
       # packs: P pack-8607f42392be437e8f46408898de44948ccd357f.pack
       
-      Dir.chdir(clone_dir) do
+      success = true
+      
+      Dir.chdir(@git_dir) do
         # fetch (url)/info/refs
         log('fetching server refs')
         refs = Net::HTTP.get(URI.parse("#{repo_url}/info/refs"))        
@@ -97,17 +109,21 @@ module GitRuby
         remote_head = Net::HTTP.get(URI.parse("#{repo_url}/HEAD"))
         if !(remote_head =~ /^ref: refs\//)
           fetch_refs[remote_head] = false
+        else
+          success = remote_head.sub('ref: refs/heads/', '').strip
         end
-        
+
         fetch_refs.each do |sha, ref|
           log("fetching REF : #{ref} #{sha}")
           if http_fetch(repo_url, sha, 'commit')
-            puts 'UPDATE REF'
             update_ref("refs/remotes/#{remote_name}/#{ref}", sha) if ref
+          else
+            success = false
           end
         end
-                
       end
+      
+      success
     end
     
     def map_refs(refs)
@@ -139,10 +155,32 @@ module GitRuby
           log("#{type} : #{sha} fetched")
         else
           # file may be packed - get the packfiles if we haven't already and lets try those
-          # fetch (url)/objects/info/packs
-            # fetch packs we don't have, look for it there
-          puts "FAIL #{sha}" + res.to_s
-          return false
+          puts "trying : #{url}/objects/info/packs"
+          res = Net::HTTP.get_response(URI.parse("#{url}/objects/info/packs"))
+          if res.kind_of?(Net::HTTPSuccess)
+            # fetch packs we don't have, look for it there  
+            # !! todo - look for packfile with our sha in it !!          
+            res.body.split("\n").each do |packline|
+              pack_type, pack_file = packline.split(' ')
+              pack_index = pack_file.sub('.pack', '.idx')
+              
+              # download this index
+              index = Net::HTTP.get(URI.parse("#{url}/objects/pack/#{pack_index}"))
+              write_file(File.join('objects', 'pack', pack_index), index)
+              
+              packf = Net::HTTP.get(URI.parse("#{url}/objects/pack/#{pack_file}"))
+              write_file(File.join('objects', 'pack', pack_file), packf)              
+            end
+            if !get_raw_repo.object_exists?(sha)
+              # cannot get the pack info
+              puts "NOT IN PACKS" + sha
+              return false
+            end
+          else
+            # cannot get the pack info
+            puts "FAIL PACK" + res.to_s
+            return false
+          end
         end
       end
       
@@ -313,8 +351,8 @@ module GitRuby
     
     def update_ref(ref, sha)
       ref_file = File.join(@git_dir, ref)
-      if(!File.exists?(ref))
-        FileUtils.mkdir_p(File.basedir(ref_file)) rescue nil
+      if(!File.exists?(ref_file))
+        FileUtils.mkdir_p(File.dirname(ref_file)) rescue nil
       end
       File.open(ref_file, 'w') do |f|
         f.write sha
@@ -348,7 +386,8 @@ module GitRuby
       end
       arr += list_files('heads').map { |f| [f, f == current] }
       arr += list_files('remotes').map { |f| [f, false] } rescue nil
-            
+      # !! TODO : check packed-refs file, too !!
+      
       arr
     end
 

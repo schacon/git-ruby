@@ -17,12 +17,12 @@ module GitRuby
       end
       
       @base = base
-      @path = path
+      @path = File.expand_path(path)
       
       if(File.exists?(@path))
         @files, @ref, @last_commit = File.open(@path) { |f| Marshal.load(f) }
       else
-        FileUtils.mkdir_p(File.dirname(path))
+        FileUtils.mkdir_p(File.dirname(@path))
         read_head
       end
     end

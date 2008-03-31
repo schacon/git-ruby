@@ -51,6 +51,31 @@ module GitRuby
 
           @size = @offsets[-1]
         end
+        
+        # given an index file, list out the shas that it's packfile contains
+        def self.get_shas(index_file)
+          @idxfile = File.open(index_file)
+          @idx = Mmap.new(@idxfile)
+          @offsets = [0]
+          FanOutCount.times do |i|
+            pos = @idx[i * IdxOffsetSize,IdxOffsetSize].unpack('N')[0]
+            if pos < @offsets[i]
+              raise PackFormatError, "pack #@name has discontinuous index #{i}"
+            end
+            @offsets << pos
+          end
+        
+          @size = @offsets[-1]
+          shas = []
+          
+          pos = SHA1Start
+          @size.times do
+            sha1 = @idx[pos,SHA1Size]
+            pos += EntrySize
+            shas << sha1.unpack("H*").first
+          end
+          shas
+        end
 
         def name
           @name

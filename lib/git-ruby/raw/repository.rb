@@ -80,6 +80,7 @@ module GitRuby
         sha_hex = [sha1].pack("H*")
         return true if in_packs?(sha_hex)
         return true if in_loose?(sha_hex)
+        initpacks
         return true if in_packs?(sha_hex) #maybe the object got packed in the meantime
         false
       end
