@@ -91,7 +91,8 @@ module GitRuby
 
         def find_object(sha1)
           slot = sha1[0]
-          first, last = @offsets[slot,2]
+          return nil if !slot
+          first, last = @offsets[slot,2] 
           while first < last
             mid = (first + last) / 2
             midsha1 = @idx[SHA1Start + mid * EntrySize,SHA1Size]

@@ -35,7 +35,7 @@ module GitRuby
     def self.init(working_dir, opts = {})
       default = {:working_directory => File.expand_path(working_dir),
                  :repository => File.join(working_dir, '.git')}
-      git_options = default.merge(opts)
+      git_options = default.merge(opts)      
       
       if git_options[:working_directory]
         # if !working_dir, make it
@@ -49,15 +49,34 @@ module GitRuby
       GitRuby::Repository.init(git_options[:repository])
       
       self.new(git_options)
-    end      
-        
+    end    
+    
+    # clones a git repository locally
+    #
+    #  repository - http://repo.or.cz/w/sinatra.git
+    #  name - sinatra
+    #
+    # options:
+    #   :repository
+    #
+    #    :bare
+    #   or 
+    #    :working_directory
+    #    :index_file
+    #
+    def self.clone(repository, name, opts = {})
+      # run git-clone 
+      self.new(GitRuby::Lib.new(nil, opts[:logger]).clone(repository, name, opts))
+    end
+    
+            
     def initialize(options = {})
       if working_dir = options[:working_directory]
         options[:repository] = File.join(working_dir, '.git') if !options[:repository]
         options[:index] = File.join(working_dir, '.git', 'index') if !options[:index]
       end
-      if options[:log]
-        @logger = options[:log]
+      if options[:logger]
+        @logger = options[:logger]
         @logger.info("Starting Git")
       end
       
@@ -228,8 +247,17 @@ module GitRuby
       self.index.ls_files
     end
     
-    def add(file)
-      self.lib.add(file)
+    def add(file = '.')
+      if file == '.'
+        # add all files
+        Dir.glob("**/*").each do |file|
+          if File.file?(file)
+            self.lib.add(file)
+          end
+        end
+      else
+        self.lib.add(file)
+      end
     end
     
     def commit(message)

@@ -26,9 +26,8 @@ module GitRuby
 
         def [](sha1)
           sha1 = sha1.unpack("H*")[0]
-
-          path = @directory+'/'+sha1[0...2]+'/'+sha1[2..40]
           begin
+            path = @directory+'/'+sha1[0...2]+'/'+sha1[2..40]
             get_raw_object(File.read(path))
           rescue Errno::ENOENT
             nil

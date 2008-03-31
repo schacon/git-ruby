@@ -23,6 +23,7 @@ require 'git-ruby/author'
 
 require 'git-ruby/raw/repository'
 require 'fileutils'
+require 'logger'
 
 
 # Git-Ruby Library
@@ -67,6 +68,20 @@ module GitRuby
   #   :index => '/path/to/alt_index_file'
   def self.init(working_dir = '.', options = {})
     Base.init(working_dir, options)
+  end
+  
+  # clones a remote repository
+  #
+  # options
+  #   :bare => true (does a bare clone)
+  #   :repository => '/path/to/alt_git_dir'
+  #   :index => '/path/to/alt_index_file'
+  #
+  # example
+  #  Git.clone('git://repo.or.cz/rubygit.git', 'clone.git', :bare => true)
+  #
+  def self.clone(repository, name, options = {})
+    Base.clone(repository, name, options)
   end
     
 end

@@ -76,6 +76,27 @@ module GitRuby
         @loose.put_raw_object(content, type)
       end
       
+      def object_exists?(sha1)
+        sha_hex = [sha1].pack("H*")
+        return true if in_packs?(sha_hex)
+        return true if in_loose?(sha_hex)
+        return true if in_packs?(sha_hex) #maybe the object got packed in the meantime
+        false
+      end
+      
+      def in_packs?(sha_hex)
+        # try packs
+        @packs.each do |pack|
+          return true if pack[sha_hex]
+        end
+        false
+      end
+      
+      def in_loose?(sha_hex)
+        return true if @loose[sha_hex]
+        false
+      end
+      
       def get_raw_object_by_sha1(sha1)
         sha1 = [sha1].pack("H*")
 
@@ -112,11 +133,13 @@ module GitRuby
             pack.close
           end
           @packs = []
-          Dir.open(git_path("objects/pack/")) do |dir|
-            dir.each do |entry|
-              if entry =~ /\.pack$/i
-                @packs << GitRuby::Raw::Internal::PackStorage.new(git_path("objects/pack/" \
-                                                                  + entry))
+          if File.exists?(git_path("objects/pack"))
+            Dir.open(git_path("objects/pack/")) do |dir|
+              dir.each do |entry|
+                if entry =~ /\.pack$/i
+                  @packs << GitRuby::Raw::Internal::PackStorage.new(git_path("objects/pack/" \
+                                                                    + entry))
+                end
               end
             end
           end

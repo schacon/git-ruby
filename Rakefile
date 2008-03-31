@@ -10,8 +10,13 @@ spec = Gem::Specification.new do |s|
     s.email     =   "schacon@gmail.com"
     s.summary   =   "A pure ruby implementation of Git"
     s.files     =   FileList['lib/**/*', 'tests/**/*', 'doc/**/*'].to_a
+
+    s.bindir = 'bin'
+    s.executables << "gitr"
+    s.homepage = "http://github/schacon/git-ruby"
+
     s.require_path  =   "lib"
-    s.autorequire   =   "git"
+    s.autorequire   =   "git-ruby"
     s.test_files = Dir.glob('tests/*.rb')
     s.has_rdoc  =   true
     s.extra_rdoc_files  =   ["README"]

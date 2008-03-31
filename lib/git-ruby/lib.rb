@@ -1,9 +1,9 @@
 require 'tempfile'
+require 'net/https'
 
 module GitRuby
   
-  class GitRubyExecuteError < StandardError 
-  end
+  class GitRubyInvalidTransport < StandardError; end
   
   class Lib
       
@@ -29,6 +29,147 @@ module GitRuby
         @logger = logger
       end
     end    
+    
+    
+    # tries to clone the given repo
+    #
+    # returns {:repository} (if bare)
+    #         {:working_directory} otherwise
+    #
+    # accepts options:
+    #  :remote - name of remote (rather than 'origin')
+    #  :bare   - no working directory
+    # 
+    # TODO - make this work with SSH password or auth_key
+    #
+    def clone(repository, name, opts = {})
+      @path = opts[:path] || '.'
+      opts[:path] ? clone_dir = File.join(@path, name) : clone_dir = name
+
+      working_dir = clone_dir
+
+      # initialize repository
+      if(!opts[:bare])
+        clone_dir += '/.git'
+      end
+            
+      GitRuby::Repository.init(clone_dir, opts[:bare])
+      @git_dir = File.expand_path(clone_dir)
+      
+      remote_name = opts[:remote] || 'origin'
+      
+      # look at #{repository} for http://, user@, git://
+      if repository =~ /^http:\/\//
+        # http fetch
+        clone_http(repository, false, remote_name, clone_dir)
+      elsif repository =~ /^https:\/\//
+        # https fetch
+        clone_http(repository, true, remote_name, clone_dir)
+      elsif repository =~ /^git:\/\//
+        # git fetch
+        raise GitRubyInvalidTransport('transport git:// not yet supported') 
+      else
+        raise GitRubyInvalidTransport('unknown transport') 
+      end
+            
+      if opts[:bare]
+        return {:repository => clone_dir}
+      else
+        # !! TODO : checkout to working_dir !!
+        return {:working_directory => working_dir}
+      end
+    end
+    
+    # implements cloning a repository over http/s
+    # meant to be called 
+    def clone_http(repo_url, use_ssl, remote_name, clone_dir)
+      # refs : 909e4d4f706c11cafbe35fd9729dc6cce24d6d6f        refs/heads/master
+      # packs: P pack-8607f42392be437e8f46408898de44948ccd357f.pack
+      
+      Dir.chdir(clone_dir) do
+        # fetch (url)/info/refs
+        log('fetching server refs')
+        refs = Net::HTTP.get(URI.parse("#{repo_url}/info/refs"))        
+        fetch_refs = map_refs(refs)
+
+        # fetch (url)/HEAD, write as FETCH_HEAD
+        log('fetching remote HEAD')
+        remote_head = Net::HTTP.get(URI.parse("#{repo_url}/HEAD"))
+        if !(remote_head =~ /^ref: refs\//)
+          fetch_refs[remote_head] = false
+        end
+        
+        fetch_refs.each do |sha, ref|
+          log("fetching REF : #{ref} #{sha}")
+          if http_fetch(repo_url, sha, 'commit')
+            puts 'UPDATE REF'
+            update_ref("refs/remotes/#{remote_name}/#{ref}", sha) if ref
+          end
+        end
+                
+      end
+    end
+    
+    def map_refs(refs)
+      # process the refs file
+      # get a list of all the refs/heads/
+      fetch_refs = {}
+      refs.split("\n").each do |ref|
+        if ref =~ /refs\/heads/
+          sha, head = ref.split("\t")
+          head = head.sub('refs/heads/', '').strip
+          fetch_refs[sha] = head
+        end
+      end
+      fetch_refs
+    end
+
+    def http_fetch(url, sha, type)
+      # fetch from server objects/sh/a1value
+      dir = sha[0...2]
+      obj = sha[2..40]
+      
+      path = File.join('objects', dir)
+            
+      if !get_raw_repo.object_exists?(sha)
+        res = Net::HTTP.get_response(URI.parse("#{url}/objects/#{dir}/#{obj}"))
+        if res.kind_of?(Net::HTTPSuccess)
+          Dir.mkdir(path) if !File.directory?(path)
+          write_file(File.join('objects', dir, obj), res.body)
+          log("#{type} : #{sha} fetched")
+        else
+          # file may be packed - get the packfiles if we haven't already and lets try those
+          # fetch (url)/objects/info/packs
+            # fetch packs we don't have, look for it there
+          puts "FAIL #{sha}" + res.to_s
+          return false
+        end
+      end
+      
+      response = true
+      
+      case type
+      when 'commit':
+        # if it's a commit, walk the tree, then get it's parents
+        commit = commit_data(sha)
+        log('walking ' + commit['tree'])
+        http_fetch(url, commit['tree'], 'tree')
+        commit['parent'].each do |parent|
+          log('walking ' + parent)
+          response &&= http_fetch(url, parent, 'commit')
+        end
+      when 'tree':
+        data = ls_tree(sha)
+        data['blob'].each do |key, blob|
+          response &&= http_fetch(url, blob[:sha], 'blob')          
+        end
+        data['tree'].each do |key, tree|
+          response &&= http_fetch(url, tree[:sha], 'tree')          
+        end
+      end
+      
+      response
+    end
     
     ## READ COMMANDS ##
         
@@ -101,7 +242,8 @@ module GitRuby
       head = File.join(@git_dir, 'refs', 'tags', string)
       return File.read(head).chomp if File.file?(head)
       
-      ## !! more !!
+      ## !! check packed-refs file, too !! 
+      ## !! more - partials and such !!
       
       return string
     end
@@ -143,7 +285,7 @@ module GitRuby
       contents = []
       contents << ['tree', tree].join(' ')
       parents.each do |p|
-        contents << ['parent', p].join(' ')
+        contents << ['parent', p].join(' ') if p        
       end
 
       name = config_get('user.name')
@@ -171,8 +313,9 @@ module GitRuby
     
     def update_ref(ref, sha)
       ref_file = File.join(@git_dir, ref)
-      return false if !File.exists?(ref_file)
-      
+      if(!File.exists?(ref))
+        FileUtils.mkdir_p(File.basedir(ref_file)) rescue nil
+      end
       File.open(ref_file, 'w') do |f|
         f.write sha
       end
@@ -265,6 +408,16 @@ module GitRuby
       tags = []
       Dir.chdir(tag_dir) { tags = Dir.glob('*') }
       return tags
+    end
+    
+    def log(message)
+      @logger.info(message) if @logger
+    end
+    
+    def write_file(name, contents)
+      File.open(name, 'w') do |f|
+        f.write contents
+      end
     end
         
   end

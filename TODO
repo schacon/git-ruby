@@ -1,8 +1,3 @@
-== first pass ==
-
-repo.add(@name)
-repo.commit(message)
-
 == second pass ==
 
 $repo.log.first.gtree.children.map
