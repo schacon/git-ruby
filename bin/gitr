@@ -23,6 +23,7 @@ if !command
   puts 'usage: gitr (command) [args]'
   puts
   puts 'commands: init'
+  puts '          clone (repo_uri) (name)'
   puts '          add'
   puts '          commit'
   puts '          ls-files'
@@ -40,26 +41,19 @@ git_dir = ENV['GIT_DIR'] || '.git'
 working_dir = ENV['GIT_WORKING_DIR'] || '.'
 #@git = Git.bare(git_dir, :log => Logger.new(STDOUT))
 
-if command != 'init'
+if !['init', 'clone'].include?(command)
   @git = GitRuby.open(working_dir)
-end
-
-def short_sha(sha)
-  if sha
-    sha[0,8] 
-  else
-    '        '
-  end
 end
 
 case command
 when 'init'
   GitRuby.init
+when 'clone'
+  GitRuby.clone(ARGV[1], ARGV[2])
 when 'ls-files'
-  puts ['mode', 'repo    ', 'index   ', 'working ', 'path'].join("\t")
-  @git.ls_files.sort.each do |f, hsh|
-    puts [hsh[:mode_index], short_sha(hsh[:sha_repo]), short_sha(hsh[:sha_index]), short_sha(hsh[:sha_working]), hsh[:path]].join("\t")
-  end
+  @git.index.to_s
+when 'checkout'
+  @git.checkout(ARGV[1])
 when 'add'
   @git.add(ARGV[1])
 when 'commit'

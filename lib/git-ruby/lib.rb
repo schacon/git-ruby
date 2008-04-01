@@ -62,15 +62,45 @@ module GitRuby
         # create a local branch 
         update_ref("refs/heads/#{branch}", revparse("#{remote_name}/#{branch}"))
         if !opts[:bare]
-          # checkout branch
+          Dir.chdir(working_dir) do
+            dumb_checkout(branch)
+          end
         end
       end
             
       if opts[:bare]
         return {:repository => clone_dir}
       else
-        # !! TODO : checkout to working_dir !!
         return {:working_directory => working_dir}
+      end
+    end
+    
+    def checkout(branch)
+      if branch == branch_current
+        puts 'already on branch!'
+      end
+      @git_index.checkout("refs/heads/#{branch}")
+    end
+    
+    # does a dumb checkout - copies the tree pointed to by the branch
+    # to the current directory - used by clone, and possibly at some point
+    # archive will use this too
+    def dumb_checkout(branch)
+      sha = revparse(branch)
+      commit = commit_data(sha)
+      tree_sha = commit['tree']
+      dumb_checkout_tree(tree_sha, '.')
+    end
+    
+    def dumb_checkout_tree(tree_sha, dir)
+      FileUtils.mkdir_p(dir)
+      tree = ls_tree(tree_sha)
+      tree['blob'].each do |file, blob|
+        f = File.join(dir, file)
+        write_file(f, object_contents(blob[:sha]))
+      end
+      tree['tree'].each do |subdir, subtree|
+        dumb_checkout_tree(subtree[:sha], subdir)
       end
     end
     
@@ -146,7 +176,7 @@ module GitRuby
       obj = sha[2..40]
       
       path = File.join('objects', dir)
-            
+      
       if !get_raw_repo.object_exists?(sha)
         res = Net::HTTP.get_response(URI.parse("#{url}/objects/#{dir}/#{obj}"))
         if res.kind_of?(Net::HTTPSuccess)
@@ -155,7 +185,6 @@ module GitRuby
           log("#{type} : #{sha} fetched")
         else
           # file may be packed - get the packfiles if we haven't already and lets try those
-          puts "trying : #{url}/objects/info/packs"
           res = Net::HTTP.get_response(URI.parse("#{url}/objects/info/packs"))
           if res.kind_of?(Net::HTTPSuccess)
             # fetch packs we don't have, look for it there  
@@ -364,7 +393,7 @@ module GitRuby
     end
     
     def object_contents(sha)
-      get_raw_repo.cat_file(revparse(sha)).chomp
+      get_raw_repo.cat_file(revparse(sha))
     end
 
     def ls_tree(sha)

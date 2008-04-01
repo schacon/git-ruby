@@ -3,13 +3,14 @@ module GitRuby
   class GitRubyIndexError < StandardError 
   end
   
+  # this file implements my imagination of what the index file does.
+  # it accomplishes the same basic tasks, but uses it's own index.gitr file
+  # rather than the actual git index file because I don't have the strength to 
+  # reverse engineer that particular format quite yet.  Perhaps one day.
   class Index
     
     attr_accessor :base, :path, :ref, :last_commit, :files
     
-    # for now, this is done entirely in memory - not writing out a file
-    # so until I can duplicate the git index format, path will be ignored
-    # for the simple stuff i need to do, pretending we have an index file should be fine
     def initialize(base, path, check_path = false)
       # read in the current HEAD
       if File.extname(path) != '.gitr'
@@ -25,6 +26,24 @@ module GitRuby
         FileUtils.mkdir_p(File.dirname(@path))
         read_head
       end
+    end
+    
+    def short_sha(sha)
+      if sha
+        sha[0,8] 
+      else
+        '        '
+      end
+    end
+    
+    def to_s
+      scan_working_directory
+      outs = []
+      outs << ['mode', 'repo    ', 'index   ', 'working ', 'path'].join("\t")
+      @files.sort.each do |f, hsh|
+        outs << [hsh[:mode_index], short_sha(hsh[:sha_repo]), short_sha(hsh[:sha_index]), short_sha(hsh[:sha_working]), hsh[:path]].join("\t")
+      end
+      outs.join("\n")
     end
     
     def read_head
@@ -45,6 +64,117 @@ module GitRuby
       end
     end
 
+
+    # scans the current working directory to calculate the shas of files that
+    # have been changed since the last scan
+    # !! TODO : find removed files !!
+    def scan_working_directory
+      Dir.chdir(@base.dir.path) do
+        Dir.glob('**/*') do |file|
+          if File.file?(file)
+            file = File.join('.', file) if file[0, 1] != '.'
+          
+            s = File.stat(file)
+            mode = sprintf("%o", s.mode)
+            mtimesize = s.mtime.to_i.to_s + s.size.to_s
+
+            if @files[file]
+              if(@files[file][:working_mtime_size] != mtimesize)
+                sha = Raw::Internal::LooseStorage.calculate_sha(File.read(file), 'blob')
+                @files[file][:sha_working] = sha
+                @files[file][:mode_working] = mode
+                @files[file][:working_mtime_size] = mtimesize
+              end
+            else
+              sha = Raw::Internal::LooseStorage.calculate_sha(File.read(file), 'blob')
+              @files[file] = {:path => file, :file => File.basename(file), :type => 'blob', 
+                              :sha_working => sha, :mode_working => mode, 
+                              :working_mtime_size => mtimesize}
+            end
+          end
+        end
+      end
+    end
+    
+    # are there any files that are in the index not in the repo
+    # or modified in the working directory that are not in the index
+    # 
+    def clean?
+      scan_working_directory
+      clean = true
+      @files.each do |f, hsh|
+        if hsh[:type] == 'blob' && hsh[:sha_index]
+          clean &&= ((hsh[:sha_working] == hsh[:sha_index]) && (hsh[:sha_index] == hsh[:sha_repo]))
+        end
+      end
+      clean
+    end
+    
+    # make working directory match the index
+    #  (takes a ref : ref/heads/master, ref/remote/origin/master)
+    # - make sure the current index is clean
+    # - resolve the new sha and read it into a parallel struc
+    # -- remove wd files in old not in new
+    # -- add index files in new not in old
+    # -- overwrite wd files different in indexes
+    # - update the HEAD to the new branch ref if 'ref/heads', else set to new sha
+    #
+    def checkout(ref)
+      if clean?
+        @old_files = @files.dup
+        @old_ref = @ref.dup
+        @old_last_commit = @last_commit.dup
+        
+        Dir.chdir(@base.repo.path) do
+          if File.exists?(ref)
+            @ref = ref
+            @last_commit = File.read(@ref).chomp
+            
+            @files = {}
+            read_commit(@last_commit)
+            
+            Dir.chdir(@base.dir.path) do
+              # -- remove wd files in old not in new
+              @old_files.each do |f, hsh|
+                if(!@files[f] || !@files[f][:sha_index])
+                  File.unlink(f) if File.file?(f)
+                  Dir.rmdir(File.dirname(f)) rescue nil
+                end
+              end
+
+              # -- add index files in new not in old
+              # -- overwrite wd files different in indexes
+              @files.each do |f, hsh|
+                if(!@old_files[f] || (@old_files[f][:sha_index] != hsh[:sha_index]))
+                  # put file from repo
+                  case hsh[:type]
+                  when 'tree'
+                    FileUtils.mkdir_p(f)
+                  when 'blob'
+                    FileUtils.mkdir_p(File.dirname(f))
+                    @base.lib.write_file(f, @base.gblob(hsh[:sha_index]).contents)
+                  end
+                end
+              end            
+            end # end work in the working dir
+            
+            # update the HEAD            
+            ref = @base.lib.write_file('HEAD', "ref: #{ref}")
+            
+          else
+            puts 'branch does not exist'  
+            @files = @old_files
+            @ref = @old_ref
+            @last_commit = @old_last_commit
+            return false
+          end
+        end
+        
+      else
+        puts 'not clean index'
+      end
+    end
+    
     # read in the commit so we know what in the working directory differs
     def read_commit(commit_sha)
       # find the tree sha and read the tree
@@ -90,21 +220,25 @@ module GitRuby
       
       if @files[file]
         # update an existing file
-        @files[file][:sha_working] = sha
-        @files[file][:mode_working] = mode
-        
         @files[file][:sha_index] = sha
         @files[file][:mode_index] = mode
       else
-        @files[file] = {:path => file, :file => File.basename(file), :type => 'blob', 
-                        :sha_working => sha, :sha_index => sha, 
-                        :mode_working => mode, :mode_index => mode}
+        @files[file] = {:path => file, 
+                        :file => File.basename(file), 
+                        :type => 'blob', 
+                        :sha_index => sha, 
+                        :mode_index => mode}
       end
       save_index
       sha
     end
     
     def commit(message)
+      if clean?
+        puts 'no staged files'
+        return false
+      end
+      
       # find all the modified files
       dirs = {}
       mods = {}
@@ -159,6 +293,7 @@ module GitRuby
     end
         
     def ls_files
+      scan_working_directory
       @files
     end
     

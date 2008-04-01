@@ -264,6 +264,10 @@ module GitRuby
       self.lib.commit(message)
     end
     
+    def checkout(branch)
+      self.lib.checkout(branch)
+    end
+    
     def cat_file(objectish)
       self.lib.object_contents(objectish)
     end

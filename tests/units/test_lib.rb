@@ -6,6 +6,14 @@ class TestLib < Test::Unit::TestCase
     set_file_paths
   end
   
+  def test_dumb_checkout
+    in_temp_dir do
+      assert !File.exists?('example.txt')
+      @git.lib.dumb_checkout('test_object')
+      assert File.exists?('example.txt')
+    end
+  end
+  
   def test_revparse
     #self.lib.revparse(objectish)
   end
