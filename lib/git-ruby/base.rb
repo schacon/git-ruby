@@ -168,10 +168,23 @@ module GitRuby
 
 
     # returns a Git::Log object with count commits
-    def log(count = 30)
+    # :first_parent => true
+    def log(count = nil)
       GitRuby::Log.new(self, count)
     end
 
+    # rev-list returns a list of commit shas
+    # :object => tree-ish to start from
+    # :count => @count
+    # :since => @since  # should be a Time object
+    # :until => @until  # should be a Time object
+    # :between => @between # should be an array of 2 Time objects
+    
+    # :path_limiter => @path
+    def rev_list(options = {})
+      self.lib.rev_list(options)
+    end
+    
     # this is a convenience method for accessing the class that wraps all the actual 'git' calls. 
     def lib
       @lib ||= GitRuby::Lib.new(self, @logger)

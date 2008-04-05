@@ -32,7 +32,7 @@ class Test::Unit::TestCase
   
   def with_temp_bare
     in_temp_dir do |path|
-      g = Git.clone(@wbare, 'new')
+      g = GitRuby.clone(@wbare, 'new')
       Dir.chdir('new') do
         yield g
       end

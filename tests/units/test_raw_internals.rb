@@ -22,13 +22,13 @@ class TestRawInternals < Test::Unit::TestCase
   end
   
   def test_commit_object
-    g = Git.bare(@wbare)    
+    g = GitRuby.bare(@wbare)    
     c = g.gcommit("v2.5")
     assert_equal('test', c.message)
   end
   
   def test_lstree
-    g = Git.bare(@wbare)
+    g = GitRuby.bare(@wbare)
     c = g.object("v2.5").gtree
     sha = c.sha
     

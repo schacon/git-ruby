@@ -49,9 +49,13 @@ case command
 when 'init'
   GitRuby.init
 when 'clone'
-  GitRuby.clone(ARGV[1], ARGV[2])
+  if ARGV[2]
+    GitRuby.clone(ARGV[1], ARGV[2], :logger => Logger.new(STDERR))
+  else
+    puts 'please specify a name'
+  end
 when 'ls-files'
-  @git.index.to_s
+  puts @git.index.to_s
 when 'checkout'
   @git.checkout(ARGV[1])
 when 'add'
@@ -65,9 +69,9 @@ when 'log'
     puts l.contents
     puts
   end
-when 'log-shas'
+when 'rev-list'
   # gitr log-shas
-  puts @git.log
+  puts @git.lib.rev_list
 when 'cat-file'
   # gitr cat-file
   puts @git.cat_file(ARGV[1])
@@ -91,6 +95,10 @@ when 'ls-tree'
   tree.trees.sort.each do |name, c|
     puts [[c.mode, c.type, c.sha].join(" "), name].join("\t")
   end
+when 'done'
+  puts '<LtCG>i dont care who you are, thats funny right there...</LtCG>'
+else
+  puts 'command not found'
 end
 
 # todo:

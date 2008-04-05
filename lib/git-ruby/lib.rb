@@ -285,14 +285,35 @@ module GitRuby
     end
 
     def full_log_commits(opts = {})
-      # can do this in pure ruby
+      data = log_data(opts)
+      text = data.map { |a,b| b }.join("\n")
+      return process_commit_data(text)
+    end
+    
+    def rev_list(opts = {})
+      data = log_data(opts)
+      data.map { |a,b| a }
+    end
+    
+    def log_data(opts)
+      # resolve options
       sha = revparse(opts[:object] || branch_current || 'master')
-      count = opts[:count] || 30
+      if opts[:between] && opts[:between].size == 2
+        opts[:since] = opts[:between][0]
+        opts[:until] = opts[:between][1]
+      end
+      if opts[:path_limiter] && opts[:path_limiter][0,1] != '.'
+        opts[:path_limiter] = File.join('.', opts[:path_limiter])
+      end
       
       if /\w{40}$/.match(sha)  # valid sha
         repo = get_raw_repo
-        return process_commit_data(repo.log(sha, count))
+        return repo.log(sha, opts)
       end
+    end
+    
+    def diff_data(tree_sha1, tree_sha2)
+      get_raw_repo.quick_diff(tree_sha1, tree_sha2)
     end
     
     def revparse(string)
@@ -397,13 +418,7 @@ module GitRuby
     end
 
     def ls_tree(sha)
-      data = {'blob' => {}, 'tree' => {}}
-      
-      get_raw_repo.object(revparse(sha)).entry.each do |e|
-        data[e.format_type][e.name] = {:mode => e.format_mode, :sha => e.sha1}
-      end
-              
-      data
+      get_raw_repo.ls_tree(revparse(sha))
     end
 
     def branches_all
