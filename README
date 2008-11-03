@@ -1,9 +1,6 @@
 == * Git-Ruby Is Not Maintained *
 
 The Git-Ruby project is no longer maintained by me.  I will leave it up here for now, but almost all of this code has since been incorporated into the Grit project (http://github.com/schacon/git-ruby) and works much, much better.  If you're interested in using Git from Ruby, please check out Grit (specifically the schacon/grit fork) - it does as much as it can from Ruby and falls back to system calls if it needs to.  The API is different, but the project is being actively maintained.
-Hello.
-Hello.
-Hello.
 
 == Git Library for Ruby
 

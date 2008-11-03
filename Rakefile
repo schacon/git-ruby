@@ -2,8 +2,6 @@ require 'rubygems'
 Gem::manage_gems
 require 'rake/gempackagetask'
 
-# test
-#
 spec = Gem::Specification.new do |s|
     s.platform  =   Gem::Platform::RUBY
     s.name      =   "git-ruby"
